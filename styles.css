@@ -91,6 +91,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   line-height: 1.65;
+  zoom: 1.25;
   min-height: 100vh;
   transition: background 0.3s, color 0.3s;
 }
