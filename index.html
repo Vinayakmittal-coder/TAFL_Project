@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="An interactive visualization of the Chomsky Hierarchy — explore Type 0-3 grammars, automata, decidability properties, and test strings against formal language rules." />
+  <title>The Chomsky Hierarchy — Formal Language Theory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ═══════════════════════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════════════════════ -->
+  <header id="app-header">
+    <div class="container header-row">
+      <div class="header-left">
+        <span class="header-eyebrow">Formal Language Theory · Est. 1956</span>
+        <h1>The <em>Chomsky</em> Hierarchy</h1>
+        <p class="header-sub">A containment hierarchy classifying formal grammars and the languages they generate — from the simplest finite automata to the full computational power of Turing machines.</p>
+      </div>
+      <div class="header-right">
+        <button id="theme-toggle" type="button" aria-label="Toggle theme">
+          <span class="theme-icon" id="theme-icon">◐</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ═══════════════════════════════════════════════════════════
+         §1 — CONTAINMENT DIAGRAM + INSPECTOR
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="section-label">§1 — Containment Diagram</div>
+    <div class="two-col">
+      <!-- Left: diagram -->
+      <section class="card" id="visualizer-pane" aria-label="Hierarchy Diagram">
+        <div class="card-head">
+          <h2>Proper Containment Hierarchy</h2>
+        </div>
+        <p class="card-desc">Each class is a proper subset of the next: ℒ(Type-3) ⊊ ℒ(Type-2) ⊊ ℒ(Type-1) ⊊ ℒ(Type-0). Click any region to explore.</p>
+        <div id="diagram-container">
+          <canvas id="hierarchy-canvas"></canvas>
+          <div id="canvas-labels"></div>
+        </div>
+        <p class="hint">Click a ring to inspect · Hover for highlights</p>
+      </section>
+
+      <!-- Right: inspector -->
+      <section class="card" id="inspector-pane" aria-label="Inspector">
+        <div class="card-head">
+          <h2>Inspector</h2>
+          <span class="badge" id="inspector-type-badge">Select a Type</span>
+        </div>
+        <div id="inspector-content">
+          <div class="inspector-placeholder" id="inspector-placeholder">
+            <p>Select a language class from the diagram to view its formal definition, associated automaton, and production rules.</p>
+          </div>
+          <div id="inspector-details" class="hidden">
+            <div class="detail-row" id="detail-name">
+              <span class="detail-label">Language Class</span>
+              <h3 id="detail-name-value"></h3>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Recognizing Automaton</span>
+              <p id="detail-automaton-value"></p>
+              <p id="detail-automaton-props" class="sub"></p>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Production Rule Form</span>
+              <p id="detail-production-value" class="mono"></p>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Description</span>
+              <p id="detail-description-value"></p>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Formal Grammar</span>
+              <p id="detail-grammar-value" class="mono"></p>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Example Language</span>
+              <p id="detail-example-value" class="mono"></p>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Key Insight</span>
+              <p id="detail-note-value" class="note"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         §2 — FORMAL SUMMARY TABLE
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="section-label">§2 — Formal Summary Table</div>
+    <div class="card table-card">
+      <div class="table-scroll">
+        <table id="summary-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Grammar Name</th>
+              <th>Language Class</th>
+              <th>Automaton</th>
+              <th>Production Rule Form</th>
+              <th>Decidability</th>
+              <th>Closure: ∩</th>
+              <th>Closure: ∁</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-type="0">
+              <td><span class="dot dot-0"></span>Type-0</td>
+              <td>Unrestricted</td>
+              <td>Recursively Enumerable (RE)</td>
+              <td>Turing Machine</td>
+              <td class="mono">α → β</td>
+              <td>Semi-decidable</td>
+              <td class="tag-yes">Yes</td>
+              <td class="tag-no">No</td>
+            </tr>
+            <tr data-type="1">
+              <td><span class="dot dot-1"></span>Type-1</td>
+              <td>Context-Sensitive (CSG)</td>
+              <td>Context-Sensitive (CSL)</td>
+              <td>Linear Bounded Automaton</td>
+              <td class="mono">αAβ → αγβ</td>
+              <td>Decidable (PSPACE)</td>
+              <td class="tag-yes">Yes</td>
+              <td class="tag-yes">Yes</td>
+            </tr>
+            <tr data-type="2">
+              <td><span class="dot dot-2"></span>Type-2</td>
+              <td>Context-Free (CFG)</td>
+              <td>Context-Free (CFL)</td>
+              <td>Pushdown Automaton (PDA)</td>
+              <td class="mono">A → γ</td>
+              <td>Decidable — O(n³)</td>
+              <td class="tag-no">No</td>
+              <td class="tag-no">No</td>
+            </tr>
+            <tr data-type="3">
+              <td><span class="dot dot-3"></span>Type-3</td>
+              <td>Regular Grammar</td>
+              <td>Regular Language (RL)</td>
+              <td>Finite Automaton (DFA/NFA)</td>
+              <td class="mono">A → aB | a | ε</td>
+              <td>Decidable — O(n)</td>
+              <td class="tag-yes">Yes</td>
+              <td class="tag-yes">Yes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         §3 — RECOGNIZING AUTOMATA
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="section-label">§3 — Recognizing Automata</div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Computational Models</h2>
+      </div>
+      <p class="card-desc">Each grammar class corresponds exactly to a computational model. More powerful automata recognize strictly larger language classes.</p>
+      <div class="automata-grid">
+        <div class="automata-card ac-3">
+          <div class="automata-icon">⊙</div>
+          <div class="automata-abbr">DFA / NFA</div>
+          <div class="automata-full">Finite Automaton</div>
+          <div class="automata-desc">Finite set of states Q, input alphabet Σ, transition function δ: Q×Σ→Q. No auxiliary memory. Reads input left-to-right in O(n) time.</div>
+        </div>
+        <div class="automata-card ac-2">
+          <div class="automata-icon">⊞</div>
+          <div class="automata-abbr">PDA</div>
+          <div class="automata-full">Pushdown Automaton</div>
+          <div class="automata-desc">Finite automaton augmented with an unbounded stack Γ. Transitions may push/pop stack symbols. Handles nested structures (e.g. matched brackets).</div>
+        </div>
+        <div class="automata-card ac-1">
+          <div class="automata-icon">⊡</div>
+          <div class="automata-abbr">LBA</div>
+          <div class="automata-full">Linear Bounded Automaton</div>
+          <div class="automata-desc">Turing Machine restricted to tape length proportional to input: O(n) space. Handles context‑sensitive patterns like {aⁿbⁿcⁿ}. Decidable membership.</div>
+        </div>
+        <div class="automata-card ac-0">
+          <div class="automata-icon">⊗</div>
+          <div class="automata-abbr">Turing Machine</div>
+          <div class="automata-full">Unrestricted TM</div>
+          <div class="automata-desc">Infinite read/write tape, full set of transitions. Most powerful model of computation. Some languages in this class are undecidable (halting problem).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         §4 — DECIDABILITY PROPERTIES
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="section-label">§4 — Decidability Properties</div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Decision Problems</h2>
+      </div>
+      <p class="card-desc">"Yes" = decidable in finite time. "No" = undecidable. "Semi" = recognizable but may not halt on rejection.</p>
+      <div class="decide-grid" id="decide-grid">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         §5 — LINGUISTIC PERSPECTIVE (from Hunter 2021)
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="section-label">§5 — Linguistic Perspective</div>
+    <div class="card callout-card">
+      <div class="card-head">
+        <h2>Grammars as Mental Systems</h2>
+        <span class="badge">Hunter, 2021</span>
+      </div>
+      <blockquote>
+        "The Chomsky hierarchy helped shift linguistics from viewing language as a collection of observed sentences to viewing it as a <em>system of rules</em> — a mental grammar — that generates sentences."
+      </blockquote>
+      <div class="callout-cols">
+        <div class="callout-item">
+          <h4>Intersubstitutability</h4>
+          <p>Different expressions can be treated as equivalent in certain contexts, forming grammatical categories. The hierarchy levels correspond to different memory constraints on this tracking process.</p>
+        </div>
+        <div class="callout-item">
+          <h4>Beyond String-Rewriting</h4>
+          <p>When generating trees rather than strings, more restricted mechanisms (finite-state, strictly-local) can suffice to capture patterns relevant to syntactic theory.</p>
+        </div>
+        <div class="callout-item">
+          <h4>Generative Capacity</h4>
+          <p>The hierarchy explores what regularities can arise from grammars when specific structural constraints — restrictions on rules — are applied to them.</p>
+        </div>
+      </div>
+      <p class="cite">— T. Hunter, "The Chomsky Hierarchy." <em>Blackwell Companion to Chomsky</em>, 2021.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         §6 — PLAYGROUND
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="section-label">§6 — Language Membership Tester</div>
+    <section class="card" id="playground-pane" aria-label="Playground">
+      <div class="card-head">
+        <h2>Test String Membership</h2>
+      </div>
+      <p class="card-desc">Select a language and enter a string. The checker applies formal grammar rules to decide membership and shows reasoning.</p>
+
+      <div id="playground-content">
+        <div id="playground-tabs" role="tablist">
+          <button class="tab active" data-type="3" role="tab" id="tab-type-3">Type 3 · Regular</button>
+          <button class="tab" data-type="2" role="tab" id="tab-type-2">Type 2 · Context-Free</button>
+          <button class="tab" data-type="1" role="tab" id="tab-type-1">Type 1 · Context-Sensitive</button>
+          <button class="tab" data-type="0" role="tab" id="tab-type-0">Type 0 · RE</button>
+        </div>
+
+        <div id="playground-language-selector">
+          <label for="language-select" class="field-label">Select language</label>
+          <select id="language-select"></select>
+        </div>
+
+        <div id="playground-language-info">
+          <span id="playground-lang-label"></span>
+          <code id="playground-lang-desc"></code>
+        </div>
+
+        <div id="playground-grammar-info" class="hidden">
+          <div id="playground-grammar-text"></div>
+          <div id="playground-proof-text"></div>
+        </div>
+
+        <div id="playground-input-area">
+          <div class="input-row">
+            <label for="test-string-input" class="field-label">Input string</label>
+            <div class="input-flex">
+              <input type="text" id="test-string-input" placeholder="e.g. aabb" autocomplete="off" spellcheck="false" />
+              <button id="evaluate-btn" type="button">Check membership →</button>
+            </div>
+          </div>
+          <div id="quick-examples"></div>
+        </div>
+
+        <div id="result-area" class="hidden">
+          <div id="result-icon"></div>
+          <div id="result-text-area">
+            <p id="result-verdict"></p>
+            <p id="result-explanation"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer id="app-footer">
+    <div class="container">
+      Chomsky Hierarchy Visualization · Formal Language Theory · Noam Chomsky, 1956 · "Three models for the description of language" (IRE Trans. Inform. Theory)
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
