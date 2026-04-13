@@ -723,9 +723,489 @@ const UIController = (() => {
 
 
 /* ─────────────────────────────────────────────────────────────────────
-   8.  BOOTSTRAP
+   8.  SIMULATOR CONFIGURATIONS
+   ───────────────────────────────────────────────────────────────────── */
+const SIMULATOR_CONFIGS = [
+  /* ── Type 3: DFA for a*b* ── */
+  {
+    type: 3,
+    name: "DFA — a*b*",
+    label: "DFA · Finite Automaton",
+    hint: "No auxiliary memory. Accept in q₀ (empty or only a's) or q₁ (finished reading b's). q₂ = dead state (a found after b).",
+    hasStack: false,
+    writableTape: false,
+    tryValid: ["", "aaa", "bbb", "aabb"],
+    tryInvalid: ["ba", "abab"],
+    simulate(input) {
+      const steps = [];
+      const tape = input ? input.split("") : [];
+      let state = "q₀";
+      steps.push({ state, pos: 0, tape: [...tape], stack: null, workTape: null,
+        label: "Initial configuration", desc: "State q₀, tape head at position 0",
+        isFinal: false, accepted: null });
+      for (let i = 0; i < tape.length; i++) {
+        const ch = tape[i];
+        const prev = state;
+        let desc;
+        if (state === "q₀" && ch === "a") { state = "q₀"; desc = "Stay — reading a's"; }
+        else if (state === "q₀" && ch === "b") { state = "q₁"; desc = "Transition — start reading b's"; }
+        else if (state === "q₁" && ch === "b") { state = "q₁"; desc = "Stay — reading b's"; }
+        else if (state === "q₁" && ch === "a") { state = "q₂"; desc = "Dead — a after b not allowed"; }
+        else { state = "q₂"; desc = "Dead state"; }
+        steps.push({ state, pos: i + 1, tape: [...tape], stack: null, workTape: null,
+          label: `δ(${prev}, ${ch}) = ${state}`, desc,
+          isFinal: false, accepted: null });
+      }
+      const accepted = state === "q₀" || state === "q₁";
+      steps.push({ state, pos: tape.length, tape: [...tape], stack: null, workTape: null,
+        label: accepted ? `${state} ∈ F — ACCEPT` : `${state} ∉ F — REJECT`,
+        desc: accepted ? "String accepted ✓" : "String rejected ✗",
+        isFinal: true, accepted });
+      return steps;
+    }
+  },
+
+  /* ── Type 2: PDA for aⁿbⁿ ── */
+  {
+    type: 2,
+    name: "PDA — aⁿbⁿ",
+    label: "PDA · Pushdown Automaton",
+    hint: "Push 'X' for each 'a' read. Pop 'X' for each 'b'. Accept when stack has only bottom marker 'Z' and all input consumed.",
+    hasStack: true,
+    writableTape: false,
+    tryValid: ["ab", "aabb", "aaabbb"],
+    tryInvalid: ["a", "abb", "ba"],
+    simulate(input) {
+      const steps = [];
+      const tape = input ? input.split("") : [];
+      let state = "q₀";
+      let stack = ["Z"];
+      let pos = 0;
+      let error = false;
+      steps.push({ state, pos, tape: [...tape], stack: [...stack], workTape: null,
+        label: "Initial configuration", desc: "State q₀, stack = [Z]",
+        isFinal: false, accepted: null });
+      if (tape.length === 0) {
+        steps.push({ state, pos, tape: [...tape], stack: [...stack], workTape: null,
+          label: "ε ∉ L — n ≥ 1 required", desc: "Empty string not in language — reject ✗",
+          isFinal: true, accepted: false });
+        return steps;
+      }
+      while (pos < tape.length && !error) {
+        const ch = tape[pos];
+        const stackTop = stack[stack.length - 1];
+        if (state === "q₀" && ch === "a") {
+          stack.push("X");
+          pos++;
+          steps.push({ state: "q₀", pos, tape: [...tape], stack: [...stack], workTape: null,
+            label: `δ(q₀, ${ch}, ${stackTop}) = (q₀, X${stackTop})`, desc: "Push X — counting a's",
+            isFinal: false, accepted: null });
+        } else if (state === "q₀" && ch === "b" && stackTop === "X") {
+          state = "q₁";
+          stack.pop();
+          pos++;
+          steps.push({ state: "q₁", pos, tape: [...tape], stack: [...stack], workTape: null,
+            label: "δ(q₀, b, X) = (q₁, ε)", desc: "Pop X — first b, transition to q₁",
+            isFinal: false, accepted: null });
+        } else if (state === "q₁" && ch === "b" && stackTop === "X") {
+          stack.pop();
+          pos++;
+          steps.push({ state: "q₁", pos, tape: [...tape], stack: [...stack], workTape: null,
+            label: "δ(q₁, b, X) = (q₁, ε)", desc: "Pop X — matching b with a",
+            isFinal: false, accepted: null });
+        } else {
+          error = true;
+          let errDesc;
+          if (ch === "b" && stackTop === "Z") errDesc = "More b's than a's — stack has only Z";
+          else if (state === "q₁" && ch === "a") errDesc = "'a' after 'b' — invalid order";
+          else errDesc = `No transition for (${state}, ${ch}, ${stackTop})`;
+          steps.push({ state, pos, tape: [...tape], stack: [...stack], workTape: null,
+            label: "No valid transition", desc: errDesc + " — reject ✗",
+            isFinal: true, accepted: false });
+        }
+      }
+      if (!error) {
+        const stackTop = stack[stack.length - 1];
+        if (state === "q₁" && stackTop === "Z" && stack.length === 1) {
+          steps.push({ state: "q₂", pos, tape: [...tape], stack: [...stack], workTape: null,
+            label: "δ(q₁, ε, Z) = (q₂, Z) — ACCEPT", desc: "Stack empty (only Z) — accepted ✓",
+            isFinal: true, accepted: true });
+        } else if (state === "q₀") {
+          steps.push({ state, pos, tape: [...tape], stack: [...stack], workTape: null,
+            label: "End of input — no b's read",
+            desc: `${stack.length - 1} unmatched a's — reject ✗`,
+            isFinal: true, accepted: false });
+        } else {
+          steps.push({ state, pos, tape: [...tape], stack: [...stack], workTape: null,
+            label: "End of input — stack not empty",
+            desc: `${stack.length - 1} unmatched a's on stack — reject ✗`,
+            isFinal: true, accepted: false });
+        }
+      }
+      return steps;
+    }
+  },
+
+  /* ── Type 1: LBA for aⁿbⁿcⁿ ── */
+  {
+    type: 1,
+    name: "LBA — aⁿbⁿcⁿ",
+    label: "LBA · Linear Bounded Automaton",
+    hint: "Works on the bounded input tape. Marks one 'a', one 'b', one 'c' per pass. Repeats until all marked (accept) or mismatch detected (reject).",
+    hasStack: false,
+    writableTape: true,
+    tryValid: ["abc", "aabbcc"],
+    tryInvalid: ["ab", "abbc", "aabbc"],
+    simulate(input) {
+      const steps = [];
+      const tape = input ? input.split("") : [];
+      if (tape.length === 0 || !/^a+b+c+$/.test(input)) {
+        steps.push({ state: "q₀", pos: 0, tape: [...tape], stack: null, workTape: [...tape],
+          label: "Initial configuration",
+          desc: tape.length === 0 ? "Empty string" : "Input not in form a⁺b⁺c⁺",
+          isFinal: false, accepted: null });
+        steps.push({ state: "qᵣ", pos: 0, tape: [...tape], stack: null, workTape: [...tape],
+          label: tape.length === 0 ? "ε ∉ L — n ≥ 1 required" : "Format violation — REJECT",
+          desc: "reject ✗",
+          isFinal: true, accepted: false });
+        return steps;
+      }
+      let workTape = [...tape];
+      steps.push({ state: "q₀", pos: 0, tape: [...tape], stack: null, workTape: [...workTape],
+        label: "Initial configuration", desc: "Tape loaded, head at position 0",
+        isFinal: false, accepted: null });
+      let safety = 0;
+      while (safety++ < 50) {
+        let aPos = -1;
+        for (let j = 0; j < workTape.length; j++) { if (workTape[j] === "a") { aPos = j; break; } }
+        if (aPos === -1) {
+          const hasUnmarked = workTape.some(c => c === "b" || c === "c");
+          if (hasUnmarked) {
+            steps.push({ state: "qᵣ", pos: 0, tape: [...tape], stack: null, workTape: [...workTape],
+              label: "No unmarked a's but unmarked b/c remain",
+              desc: "Counts don't match — reject ✗",
+              isFinal: true, accepted: false });
+          } else {
+            steps.push({ state: "qₐ", pos: 0, tape: [...tape], stack: null, workTape: [...workTape],
+              label: "All symbols marked — ACCEPT",
+              desc: "Equal counts verified ✓",
+              isFinal: true, accepted: true });
+          }
+          break;
+        }
+        workTape[aPos] = "A";
+        steps.push({ state: "q₁", pos: aPos, tape: [...tape], stack: null, workTape: [...workTape],
+          label: `Mark a → A at position ${aPos}`,
+          desc: "Mark one 'a', scan right for 'b'",
+          isFinal: false, accepted: null });
+        let bPos = -1;
+        for (let j = aPos + 1; j < workTape.length; j++) { if (workTape[j] === "b") { bPos = j; break; } }
+        if (bPos === -1) {
+          steps.push({ state: "qᵣ", pos: aPos, tape: [...tape], stack: null, workTape: [...workTape],
+            label: "No matching unmarked 'b' found",
+            desc: "Fewer b's than a's — reject ✗",
+            isFinal: true, accepted: false });
+          break;
+        }
+        workTape[bPos] = "B";
+        steps.push({ state: "q₂", pos: bPos, tape: [...tape], stack: null, workTape: [...workTape],
+          label: `Mark b → B at position ${bPos}`,
+          desc: "Mark one 'b', scan right for 'c'",
+          isFinal: false, accepted: null });
+        let cPos = -1;
+        for (let j = bPos + 1; j < workTape.length; j++) { if (workTape[j] === "c") { cPos = j; break; } }
+        if (cPos === -1) {
+          steps.push({ state: "qᵣ", pos: bPos, tape: [...tape], stack: null, workTape: [...workTape],
+            label: "No matching unmarked 'c' found",
+            desc: "Fewer c's than a's/b's — reject ✗",
+            isFinal: true, accepted: false });
+          break;
+        }
+        workTape[cPos] = "C";
+        steps.push({ state: "q₃", pos: cPos, tape: [...tape], stack: null, workTape: [...workTape],
+          label: `Mark c → C at position ${cPos}`,
+          desc: "Mark one 'c', return to start",
+          isFinal: false, accepted: null });
+        steps.push({ state: "q₀", pos: 0, tape: [...tape], stack: null, workTape: [...workTape],
+          label: "Return to leftmost position",
+          desc: "Start next marking pass",
+          isFinal: false, accepted: null });
+      }
+      return steps;
+    }
+  },
+
+  /* ── Type 0: TM for Σ* ── */
+  {
+    type: 0,
+    name: "TM — Σ*",
+    label: "TM · Turing Machine",
+    hint: "Accepts all strings over {a, b}. Reads each symbol, moves right, and accepts when end of input (blank □) is reached.",
+    hasStack: false,
+    writableTape: false,
+    tryValid: ["", "a", "ab", "aabb", "bba"],
+    tryInvalid: [],
+    simulate(input) {
+      const steps = [];
+      const tape = input ? input.split("") : [];
+      steps.push({ state: "q₀", pos: 0, tape: [...tape], stack: null, workTape: null,
+        label: "Initial configuration", desc: "TM starts in state q₀",
+        isFinal: false, accepted: null });
+      for (let i = 0; i < tape.length; i++) {
+        const ch = tape[i];
+        if (!/[ab]/.test(ch)) {
+          steps.push({ state: "qᵣ", pos: i, tape: [...tape], stack: null, workTape: null,
+            label: `Symbol '${ch}' ∉ Σ = {a, b}`,
+            desc: "Alphabet mismatch — reject ✗",
+            isFinal: true, accepted: false });
+          return steps;
+        }
+        steps.push({ state: "q₀", pos: i + 1, tape: [...tape], stack: null, workTape: null,
+          label: `δ(q₀, ${ch}) = (q₀, ${ch}, R)`,
+          desc: `Read '${ch}', write '${ch}', move right`,
+          isFinal: false, accepted: null });
+      }
+      steps.push({ state: "qₐ", pos: tape.length, tape: [...tape], stack: null, workTape: null,
+        label: "δ(q₀, □) = (qₐ, □, S) — ACCEPT",
+        desc: "Blank symbol reached — accept ✓",
+        isFinal: true, accepted: true });
+      return steps;
+    }
+  }
+];
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   9.  SIMULATOR UI
+   ───────────────────────────────────────────────────────────────────── */
+const SimulatorUI = (() => {
+  const $ = s => document.querySelector(s);
+  let currentConfig = null;
+  let steps = [];
+  let currentStep = 0;
+  let autoTimer = null;
+  let isPlaying = false;
+
+  function init() {
+    document.querySelectorAll(".sim-tab").forEach(t => {
+      t.addEventListener("click", () => _selectType(+t.dataset.simType));
+    });
+    $("#sim-run-btn").addEventListener("click", _run);
+    $("#sim-string-input").addEventListener("keydown", e => { if (e.key === "Enter") _run(); });
+    $("#sim-auto-btn").addEventListener("click", _toggleAuto);
+    $("#sim-step-btn").addEventListener("click", _stepForward);
+    $("#sim-reset-btn").addEventListener("click", _reset);
+    _selectType(3);
+  }
+
+  function _selectType(type) {
+    document.querySelectorAll(".sim-tab").forEach(t => {
+      t.classList.toggle("active", +t.dataset.simType === type);
+    });
+    currentConfig = SIMULATOR_CONFIGS.find(c => c.type === type);
+    if (!currentConfig) return;
+    $("#sim-auto-label").textContent = currentConfig.label;
+    $("#sim-auto-hint").textContent = currentConfig.hint;
+    $("#sim-tape-label").textContent = currentConfig.writableTape ? "WORK TAPE" : "INPUT TAPE";
+    _loadExamples();
+    _stopAuto();
+    steps = [];
+    currentStep = 0;
+    $("#sim-viz").classList.add("hidden");
+  }
+
+  function _loadExamples() {
+    const c = $("#sim-examples");
+    c.innerHTML = "";
+    const lbl = document.createElement("span");
+    lbl.textContent = "Try:";
+    lbl.style.cssText = "font-family:var(--mono);font-size:0.6rem;color:var(--ink3);margin-right:3px;line-height:2;";
+    c.appendChild(lbl);
+    currentConfig.tryValid.forEach(s => {
+      const b = document.createElement("button");
+      b.className = "sim-ex valid";
+      b.textContent = s === "" ? "ε" : s;
+      b.addEventListener("click", () => { $("#sim-string-input").value = s; _run(); });
+      c.appendChild(b);
+    });
+    currentConfig.tryInvalid.forEach(s => {
+      const b = document.createElement("button");
+      b.className = "sim-ex invalid";
+      b.textContent = s;
+      b.addEventListener("click", () => { $("#sim-string-input").value = s; _run(); });
+      c.appendChild(b);
+    });
+  }
+
+  function _run() {
+    const input = $("#sim-string-input").value;
+    steps = currentConfig.simulate(input);
+    currentStep = 0;
+    _stopAuto();
+    const hasStack = currentConfig.hasStack;
+    $("#sim-memory-col").classList.toggle("hidden", !hasStack);
+    $("#sim-config-stack-top").classList.toggle("hidden", !hasStack);
+    $("#sim-viz-layout").classList.toggle("has-stack", hasStack);
+    $("#sim-viz").classList.remove("hidden");
+    _buildTrace();
+    _renderStep();
+  }
+
+  function _buildTrace() {
+    const trace = $("#sim-trace");
+    trace.innerHTML = "";
+    steps.forEach((step, i) => {
+      const item = document.createElement("div");
+      item.className = "sim-trace-item future";
+      item.dataset.step = i;
+      item.innerHTML = `<span class="sim-trace-num">${i}.</span><span class="sim-trace-text">${step.label}</span><span class="sim-trace-icon"></span>`;
+      trace.appendChild(item);
+    });
+  }
+
+  function _renderStep() {
+    if (currentStep >= steps.length) return;
+    const step = steps[currentStep];
+
+    /* Tape */
+    _renderTape(step);
+
+    /* Stack (PDA only) */
+    if (currentConfig.hasStack && step.stack) {
+      _renderStack(step.stack);
+    }
+
+    /* Config card */
+    $("#sim-step-title").textContent = `Step ${currentStep}`;
+    $("#sim-val-state").textContent = step.state;
+    const tapeData = step.workTape || step.tape;
+    let readSym = (tapeData && step.pos < tapeData.length) ? tapeData[step.pos] : "□";
+    if (!tapeData || tapeData.length === 0) readSym = "ε";
+    $("#sim-val-read").textContent = readSym;
+    if (currentConfig.hasStack && step.stack) {
+      $("#sim-val-stack-top").textContent = step.stack.length > 0 ? step.stack[step.stack.length - 1] : "∅";
+    }
+    $("#sim-transition-desc").textContent = step.desc;
+
+    /* Trace highlighting */
+    document.querySelectorAll(".sim-trace-item").forEach((item, i) => {
+      item.classList.remove("done", "current", "future");
+      const icon = item.querySelector(".sim-trace-icon");
+      if (i < currentStep) { item.classList.add("done"); icon.textContent = "✓"; }
+      else if (i === currentStep) { item.classList.add("current"); icon.textContent = "►"; }
+      else { item.classList.add("future"); icon.textContent = ""; }
+    });
+    const cur = document.querySelector(`.sim-trace-item[data-step="${currentStep}"]`);
+    if (cur) cur.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    /* Counter */
+    $("#sim-counter").textContent = `${currentStep} / ${steps.length - 1}`;
+
+    /* Final result */
+    _removeResult();
+    if (step.isFinal) { _showResult(step.accepted); _stopAuto(); }
+  }
+
+  function _renderTape(step) {
+    const c = $("#sim-tape");
+    c.innerHTML = "";
+    const tapeData = step.workTape || step.tape;
+    const origTape = step.tape;
+    if (!tapeData || tapeData.length === 0) {
+      const cell = document.createElement("div");
+      cell.className = "sim-tape-cell active";
+      cell.textContent = "ε";
+      c.appendChild(cell);
+      return;
+    }
+    tapeData.forEach((ch, i) => {
+      const cell = document.createElement("div");
+      cell.className = "sim-tape-cell";
+      if (i === step.pos) cell.classList.add("active");
+      if (i < step.pos && !currentConfig.writableTape) cell.classList.add("consumed");
+      if (currentConfig.writableTape && origTape[i] && ch !== origTape[i]) cell.classList.add("modified");
+      cell.textContent = ch;
+      c.appendChild(cell);
+    });
+    if (step.pos >= tapeData.length && !currentConfig.writableTape) {
+      const cell = document.createElement("div");
+      cell.className = "sim-tape-cell active";
+      cell.textContent = "□";
+      c.appendChild(cell);
+    }
+  }
+
+  function _renderStack(stack) {
+    const c = $("#sim-stack");
+    c.innerHTML = "";
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const cell = document.createElement("div");
+      cell.className = "sim-stack-cell";
+      if (i === stack.length - 1) cell.classList.add("highlight");
+      cell.textContent = stack[i];
+      c.appendChild(cell);
+    }
+  }
+
+  function _stepForward() {
+    if (currentStep < steps.length - 1) { currentStep++; _renderStep(); }
+  }
+
+  function _toggleAuto() {
+    if (isPlaying) _stopAuto(); else _startAuto();
+  }
+
+  function _startAuto() {
+    if (steps.length === 0) return;
+    if (currentStep >= steps.length - 1) {
+      currentStep = 0;
+      _removeResult();
+      _renderStep();
+    }
+    isPlaying = true;
+    $("#sim-auto-btn").textContent = "⏸ Pause";
+    $("#sim-auto-btn").classList.add("playing");
+    autoTimer = setInterval(() => {
+      if (currentStep < steps.length - 1) { currentStep++; _renderStep(); }
+      else _stopAuto();
+    }, 800);
+  }
+
+  function _stopAuto() {
+    isPlaying = false;
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    $("#sim-auto-btn").textContent = "▶ Auto";
+    $("#sim-auto-btn").classList.remove("playing");
+  }
+
+  function _reset() {
+    _stopAuto();
+    currentStep = 0;
+    _removeResult();
+    if (steps.length > 0) _renderStep();
+  }
+
+  function _showResult(accepted) {
+    _removeResult();
+    const d = document.createElement("div");
+    d.className = `sim-result ${accepted ? "accepted" : "rejected"}`;
+    d.innerHTML = `<span class="sim-result-icon">${accepted ? "✓" : "✗"}</span><span class="sim-result-text">${accepted ? "String Accepted" : "String Rejected"}</span>`;
+    $("#sim-viz").appendChild(d);
+  }
+
+  function _removeResult() {
+    document.querySelectorAll(".sim-result").forEach(el => el.remove());
+  }
+
+  return { init };
+})();
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   10.  BOOTSTRAP
    ───────────────────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
   ThemeManager.init();
   UIController.init();
+  SimulatorUI.init();
 });

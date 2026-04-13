@@ -305,6 +305,80 @@
       </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════════════════════
+         §7 — INTERACTIVE SIMULATOR
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="section-label">§7 — Interactive Simulator</div>
+    <section class="card" id="simulator-pane" aria-label="Automaton Simulator">
+      <div class="card-head">
+        <h2>Automaton Simulator</h2>
+        <span class="badge">Step-by-step</span>
+      </div>
+      <p class="card-desc">Step through the computation — see exactly how each automaton type processes input strings. Select a grammar type, enter a string, and watch the machine work.</p>
+
+      <div id="sim-tabs" role="tablist">
+        <button class="sim-tab active" data-sim-type="3" role="tab" id="sim-tab-3">Type 3 · DFA</button>
+        <button class="sim-tab" data-sim-type="2" role="tab" id="sim-tab-2">Type 2 · PDA</button>
+        <button class="sim-tab" data-sim-type="1" role="tab" id="sim-tab-1">Type 1 · LBA</button>
+        <button class="sim-tab" data-sim-type="0" role="tab" id="sim-tab-0">Type 0 · TM</button>
+      </div>
+
+      <div id="sim-info">
+        <div id="sim-auto-label"></div>
+        <div id="sim-auto-hint"></div>
+      </div>
+
+      <div id="sim-input-area">
+        <div class="input-row">
+          <label for="sim-string-input" class="field-label">Input string</label>
+          <div class="input-flex">
+            <input type="text" id="sim-string-input" placeholder="e.g. aabb" autocomplete="off" spellcheck="false" />
+            <button id="sim-run-btn" type="button">Run</button>
+          </div>
+        </div>
+        <div id="sim-examples"></div>
+      </div>
+
+      <div id="sim-viz" class="hidden">
+        <div id="sim-viz-layout">
+          <div id="sim-viz-main">
+            <div id="sim-tape-section">
+              <span class="sim-label" id="sim-tape-label">INPUT TAPE</span>
+              <div id="sim-tape"></div>
+            </div>
+            <div id="sim-config-card">
+              <div id="sim-step-title">Step 0</div>
+              <div id="sim-config-body">
+                <div><span class="sim-config-key">State</span><span id="sim-val-state" class="mono">—</span></div>
+                <div><span class="sim-config-key">Read</span><span id="sim-val-read" class="mono">—</span></div>
+                <div id="sim-config-stack-top" class="hidden"><span class="sim-config-key">Stack top</span><span id="sim-val-stack-top" class="mono">—</span></div>
+              </div>
+              <div id="sim-transition-desc"></div>
+            </div>
+          </div>
+          <div id="sim-memory-col" class="hidden">
+            <span class="sim-label">STACK</span>
+            <div id="sim-stack"></div>
+            <span class="sim-mem-bottom">bottom</span>
+          </div>
+        </div>
+
+        <div id="sim-trace-section">
+          <span class="sim-label">TRACE</span>
+          <div id="sim-trace"></div>
+        </div>
+
+        <div id="sim-controls">
+          <div id="sim-ctrl-left">
+            <button id="sim-auto-btn" class="sim-ctrl" type="button">▶ Auto</button>
+            <button id="sim-step-btn" class="sim-ctrl" type="button">› Step</button>
+            <button id="sim-reset-btn" class="sim-ctrl" type="button">↺ Reset</button>
+          </div>
+          <span id="sim-counter" class="mono">0 / 0</span>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- FOOTER -->
